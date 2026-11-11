@@ -45,9 +45,10 @@
             border: 1px solid var(--accent-yellow);
         }
         .badge-outage {
-            background-color: rgba(239, 68, 68, 0.15);
+            background-color: rgba(239, 68, 68, 0.25);
             color: var(--accent-red);
             border: 1px solid var(--accent-red);
+            font-weight: bold;
         }
         .uptime-bar {
             display: flex;
@@ -204,7 +205,7 @@
                         <select id="status-bot" class="form-select">
                             <option value="operational">正常稼働中 (Operational)</option>
                             <option value="degraded">一部障害/遅延 (Degraded Performance)</option>
-                            <option value="outage">大規模障害 (Major Outage)</option>
+                            <option value="outage">大規模障害・停止中 (Major Outage)</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -212,7 +213,7 @@
                         <select id="status-service" class="form-select">
                             <option value="operational">正常稼働中 (Operational)</option>
                             <option value="degraded">一部障害/遅延 (Degraded Performance)</option>
-                            <option value="outage">大規模障害 (Major Outage)</option>
+                            <option value="outage">大規模障害・停止中 (Major Outage)</option>
                         </select>
                     </div>
                 </div>
@@ -317,8 +318,8 @@
             banner.className = 'overall-banner d-flex align-items-center gap-3 ';
             if (hasOutage) {
                 banner.classList.add('overall-outage');
-                icon.className = 'fa-solid fa-circle-xmark fs-1 text-danger';
-                title.textContent = '一部システムで大規模障害発生中';
+                icon.className = 'fa-solid fa-square fs-1 text-danger';
+                title.textContent = '一部システムで大規模障害・停止発生中';
                 desc.textContent = '復旧作業を行っております。詳細は以下の報告を確認してください。';
             } else if (hasDegraded) {
                 banner.classList.add('overall-issue');
@@ -342,21 +343,26 @@
                 col.className = 'col-md-6';
 
                 let badgeClass = 'badge-operational';
+                let statusIcon = '<i class="fa-solid fa-circle-check me-1"></i>';
                 let statusText = '正常稼働中';
 
                 if (comp.status === 'degraded') {
                     badgeClass = 'badge-degraded';
+                    statusIcon = '<i class="fa-solid fa-triangle-exclamation me-1"></i>';
                     statusText = '一部障害';
                 } else if (comp.status === 'outage') {
                     badgeClass = 'badge-outage';
-                    statusText = 'システム停止中';
+                    statusIcon = '<i class="fa-solid fa-square text-danger me-1"></i>';
+                    statusText = '停止中';
                 }
 
                 col.innerHTML = `
                     <div class="status-card p-4 h-100">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="fw-bold mb-0">${comp.name}</h6>
-                            <span class="badge ${badgeClass} px-3 py-2 rounded-pill">${statusText}</span>
+                            <span class="badge ${badgeClass} px-3 py-2 rounded-pill d-flex align-items-center">
+                                ${statusIcon} ${statusText}
+                            </span>
                         </div>
                         <p class="text-secondary small mb-0">${comp.desc}</p>
                     </div>
