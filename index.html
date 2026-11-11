@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>r3GiC Bot Status & Incident Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar-custom {
+            background-color: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .status-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        .badge-operational {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+        .badge-degraded {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: var(--accent-yellow);
+            border: 1px solid var(--accent-yellow);
+        }
+        .badge-outage {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+        .uptime-bar {
+            display: flex;
+            gap: 3px;
+            height: 24px;
+        }
+        .uptime-block {
+            flex: 1;
+            background-color: var(--accent-green);
+            border-radius: 3px;
+            transition: opacity 0.2s;
+        }
+        .uptime-block:hover {
+            opacity: 0.8;
+        }
+        .overall-banner {
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .overall-operational {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(30, 41, 59, 1) 100%);
+            border: 1px solid var(--accent-green);
+        }
+        .overall-issue {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(30, 41, 59, 1) 100%);
+            border: 1px solid var(--accent-yellow);
+        }
+        .overall-outage {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(30, 41, 59, 1) 100%);
+            border: 1px solid var(--accent-red);
+        }
+        .modal-content {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+        .form-control, .form-select {
+            background-color: var(--bg-dark);
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            border-color: #6366f1;
+            box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25);
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
+                <i class="fa-solid me-1 text-primary"></i>
+                <span>r3GiC Bot Status</span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span id="admin-badge" class="badge bg-danger d-none">管理者モード</span>
+                <button id="auth-btn" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    <i class="fa-solid fa-lock me-1"></i> 管理者ログイン
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        
+        <div id="overall-status-banner" class="overall-banner overall-operational d-flex align-items-center gap-3">
+            <i id="overall-status-icon" class="fa-solid fa-circle-check fs-1 text-success"></i>
+            <div>
+                <h4 id="overall-status-title" class="mb-1 fw-bold">全システム正常稼働中</h4>
+                <p id="overall-status-desc" class="mb-0 text-secondary">すべてのBot機能およびデータベースは正常に動作しています。</p>
+            </div>
+        </div>
+
+        <div id="admin-panel" class="status-card p-4 mb-4 d-none">
+            <h5 class="fw-bold mb-3 text-warning"><i class="fa-solid fa-sliders me-2"></i>管理者コントロールパネル</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> システムステータス更新
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#addIncidentModal">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> 障害・お知らせ情報投稿
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-server me-2 text-primary"></i>システムコンポーネント</h5>
+            <div class="row g-3" id="components-list">
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="fa-solid fa-chart-line me-2 text-primary"></i>稼働状況履歴 (直近30日間)</h5>
+                <span class="text-secondary small">100.0% Uptime</span>
+            </div>
+            <div class="status-card p-4">
+                <div class="uptime-bar mb-2" id="uptime-bar-container">
+                </div>
+                <div class="d-flex justify-content-between text-secondary small">
+                    <span>30日前</span>
+                    <span>本日</span>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>障害・メンテナンス履歴</h5>
+            <div class="status-card p-4" id="incidents-container">
+            </div>
+        </div>
+
+    </div>
+
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">ステータス更新</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">r3GiC Bot Core</label>
+                        <select id="status-bot" class="form-select">
+                            <option value="operational">正常稼働中 (Operational)</option>
+                            <option value="degraded">一部障害/遅延 (Degraded Performance)</option>
+                            <option value="outage">大規模障害 (Major Outage)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">RC-Service</label>
+                        <select id="status-service" class="form-select">
+                            <option value="operational">正常稼働中 (Operational)</option>
+                            <option value="degraded">一部障害/遅延 (Degraded Performance)</option>
+                            <option value="outage">大規模障害 (Major Outage)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" id="save-status-btn" class="btn btn-primary">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="updateStatusModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">ステータス更新</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">r3GiC Bot Core</label>
+                        <select id="status-bot" class="form-select">
+                            <option value="operational">正常稼働中 (Operational)</option>
+                            <option value="degraded">一部障害/遅延 (Degraded Performance)</option>
+                            <option value="outage">大規模障害 (Major Outage)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Render Web Server (Express)</label>
+                        <select id="status-server" class="form-select">
+                            <option value="operational">正常稼働中 (Operational)</option>
+                            <option value="degraded">一部障害/遅延 (Degraded Performance)</option>
+                            <option value="outage">大規模障害 (Major Outage)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Supabase Database (PostgreSQL)</label>
+                        <select id="status-db" class="form-select">
+                            <option value="operational">正常稼働中 (Operational)</option>
+                            <option value="degraded">一部障害/遅延 (Degraded Performance)</option>
+                            <option value="outage">大規模障害 (Major Outage)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" id="save-status-btn" class="btn btn-primary">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addIncidentModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">障害・お知らせの投稿</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">タイトル</label>
+                        <input type="text" id="incident-title" class="form-control" placeholder="例: データベース接続における応答遅延について">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">重要度</label>
+                        <select id="incident-severity" class="form-select">
+                            <option value="info">情報・メンテナンス</option>
+                            <option value="warning">軽微な障害</option>
+                            <option value="danger">重大な障害</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">詳細メッセージ</label>
+                        <textarea id="incident-desc" class="form-control" rows="4" placeholder="詳細な状況や対応予定を記入"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" id="post-incident-btn" class="btn btn-primary">投稿する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const ADMIN_PASSWORD = 'rc1RanaQS';
+
+        let state = {
+            isAdmin: false,
+            components: [
+                { id: 'bot', name: 'r3GiC Bot Core', status: 'operational', desc: 'Discord Gateway Connections & Slash Commands' },
+                { id: 'server', name: 'Render Web Server', status: 'operational', desc: 'Express Keep-alive Server (Port 3000)' },
+                { id: 'db', name: 'Supabase PostgreSQL', status: 'operational', desc: 'Persistent Cloud Database Service' }
+            ],
+            incidents: [
+                {
+                    id: 1,
+                    title: 'Rcサービスへの移行完了',
+                    severity: 'info',
+                    timestamp: new Date().toISOString(),
+                    desc: ''
+                }
+            ]
+        };
+
+        function init() {
+            const savedState = localStorage.getItem('r3gic_status_data');
+            if (savedState) {
+                const parsed = JSON.parse(savedState);
+                state.components = parsed.components || state.components;
+                state.incidents = parsed.incidents || state.incidents;
+            }
+            render();
+        }
+
+        function saveState() {
+            localStorage.setItem('r3gic_status_data', JSON.stringify({
+                components: state.components,
+                incidents: state.incidents
+            }));
+        }
+
+        function render() {
+            renderOverallStatus();
+            renderComponents();
+            renderUptimeBar();
+            renderIncidents();
+            renderAdminUI();
+        }
+
+        function renderOverallStatus() {
+            const banner = document.getElementById('overall-status-banner');
+            const icon = document.getElementById('overall-status-icon');
+            const title = document.getElementById('overall-status-title');
+            const desc = document.getElementById('overall-status-desc');
+
+            const hasOutage = state.components.some(c => c.status === 'outage');
+            const hasDegraded = state.components.some(c => c.status === 'degraded');
+
+            banner.className = 'overall-banner d-flex align-items-center gap-3 ';
+            if (hasOutage) {
+                banner.classList.add('overall-outage');
+                icon.className = 'fa-solid fa-circle-xmark fs-1 text-danger';
+                title.textContent = '一部システムで大規模障害発生中';
+                desc.textContent = '復旧作業を行っております。詳細は以下の報告を確認してください。';
+            } else if (hasDegraded) {
+                banner.classList.add('overall-issue');
+                icon.className = 'fa-solid fa-triangle-exclamation fs-1 text-warning';
+                title.textContent = '一部機能に問題が発生しています';
+                desc.textContent = '一部のコマンドまたは機能で応答遅延が発生している可能性があります。';
+            } else {
+                banner.classList.add('overall-operational');
+                icon.className = 'fa-solid fa-circle-check fs-1 text-success';
+                title.textContent = '全システム正常稼働中';
+                desc.textContent = 'すべてのBot機能およびデータベースは正常に動作しています。';
+            }
+        }
+
+        function renderComponents() {
+            const container = document.getElementById('components-list');
+            container.innerHTML = '';
+
+            state.components.forEach(comp => {
+                const col = document.createElement('div');
+                col.className = 'col-md-4';
+
+                let badgeClass = 'badge-operational';
+                let statusText = '正常稼働中';
+
+                if (comp.status === 'degraded') {
+                    badgeClass = 'badge-degraded';
+                    statusText = '一部障害';
+                } else if (comp.status === 'outage') {
+                    badgeClass = 'badge-outage';
+                    statusText = 'システム停止中';
+                }
+
+                col.innerHTML = `
+                    <div class="status-card p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0">${comp.name}</h6>
+                            <span class="badge ${badgeClass} px-3 py-2 rounded-pill">${statusText}</span>
+                        </div>
+                        <p class="text-secondary small mb-0">${comp.desc}</p>
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+        }
+
+        function renderUptimeBar() {
+            const container = document.getElementById('uptime-bar-container');
+            container.innerHTML = '';
+            for (let i = 0; i < 30; i++) {
+                const block = document.createElement('div');
+                block.className = 'uptime-block';
+                block.title = `${30 - i}日前: 100% Operational`;
+                container.appendChild(block);
+            }
+        }
+
+        function renderIncidents() {
+            const container = document.getElementById('incidents-container');
+            if (state.incidents.length === 0) {
+                container.innerHTML = '<p class="text-secondary text-center my-3">報告された過去の障害はありません。</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            state.incidents.forEach(inc => {
+                const item = document.createElement('div');
+                item.className = 'border-bottom border-secondary pb-3 mb-3';
+                if (container.children.length === state.incidents.length - 1) {
+                    item.className = '';
+                }
+
+                const dateStr = new Date(inc.timestamp).toLocaleString('ja-JP');
+                let badgeBg = inc.severity === 'danger' ? 'bg-danger' : inc.severity === 'warning' ? 'bg-warning text-dark' : 'bg-info text-dark';
+
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">
+                            <span class="badge ${badgeBg} me-2">${inc.severity.toUpperCase()}</span>
+                            ${inc.title}
+                        </h6>
+                        <small class="text-secondary">${dateStr}</small>
+                    </div>
+                    <p class="text-secondary mb-0 small">${inc.desc}</p>
+                    ${state.isAdmin ? `<button class="btn btn-link text-danger btn-sm p-0 mt-2" onclick="deleteIncident(${inc.id})">削除</button>` : ''}
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderAdminUI() {
+            const adminPanel = document.getElementById('admin-panel');
+            const adminBadge = document.getElementById('admin-badge');
+            const authBtn = document.getElementById('auth-btn');
+
+            if (state.isAdmin) {
+                adminPanel.classList.remove('d-none');
+                adminBadge.classList.remove('d-none');
+                authBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket me-1"></i> ログアウト';
+                authBtn.removeAttribute('data-bs-toggle');
+                authBtn.removeAttribute('data-bs-target');
+                authBtn.onclick = logout;
+            } else {
+                adminPanel.classList.add('d-none');
+                adminBadge.classList.add('d-none');
+                authBtn.innerHTML = '<i class="fa-solid fa-lock me-1"></i> 管理者ログイン';
+                authBtn.setAttribute('data-bs-toggle', 'modal');
+                authBtn.setAttribute('data-bs-target', '#loginModal');
+                authBtn.onclick = null;
+            }
+        }
+
+        document.getElementById('login-submit-btn').addEventListener('click', () => {
+            const input = document.getElementById('admin-password-input').value;
+            if (input === ADMIN_PASSWORD) {
+                state.isAdmin = true;
+                const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+                modal.hide();
+                document.getElementById('admin-password-input').value = '';
+                render();
+            } else {
+                alert('パスワードが正しくありません。');
+            }
+        });
+
+        function logout() {
+            state.isAdmin = false;
+            render();
+        }
+
+document.getElementById('save-status-btn').addEventListener('click', () => {
+            state.components[0].status = document.getElementById('status-bot').value;
+            state.components[1].status = document.getElementById('status-service').value;
+            saveState();
+            render();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('updateStatusModal'));
+            modal.hide();
+        });
+
+        document.getElementById('post-incident-btn').addEventListener('click', () => {
+            const title = document.getElementById('incident-title').value;
+            const severity = document.getElementById('incident-severity').value;
+            const desc = document.getElementById('incident-desc').value;
+
+            if (!title || !desc) {
+                alert('タイトルと詳細メッセージを入力してください。');
+                return;
+            }
+
+            state.incidents.unshift({
+                id: Date.now(),
+                title,
+                severity,
+                timestamp: new Date().toISOString(),
+                desc
+            });
+
+            saveState();
+            render();
+
+            document.getElementById('incident-title').value = '';
+            document.getElementById('incident-desc').value = '';
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addIncidentModal'));
+            modal.hide();
+        });
+
+        function deleteIncident(id) {
+            state.incidents = state.incidents.filter(inc => inc.id !== id);
+            saveState();
+            render();
+        }
+
+        init();
+    </script>
+</body>
+</html>
